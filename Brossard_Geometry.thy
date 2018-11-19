@@ -1,6 +1,24 @@
-theory Brossard_Geometry imports Main Real All_True_or_All_False Mod4
+theory Brossard_Geometry imports Complex_Main All_True_or_All_False Mod4
 
 begin
+
+definition mono_on :: "(real \<Rightarrow> real) \<Rightarrow> real set \<Rightarrow> bool"
+  where "mono_on f S = (\<forall>x\<in>S. \<forall>y\<in>S. x \<le> y \<longrightarrow> f x \<le> f y)"
+
+thm mono_bij_Inf
+(* but we would like mono_on and bij_on because total functions*)
+lemma  assumes "mono f" "bij_betw f {x. (a::real) < x \<and> x < b} (UNIV::real set)" 
+  shows "continuous (at x within {x. (a::real) < x \<and> x < b}) f"
+proof (rule ccontr)
+  assume "\<not> continuous (at x within {x. a < x \<and> x < b}) f"
+  from assms have "\<exists>y. \<forall> x \<in> {x. (a::real) < x \<and> x < b}. f x \<noteq> y"
+    by (metis (no_types, lifting) leD lt_ex mem_Collect_eq mono_invE)
+  
+(*arrgh this shouldn't be provable without discontinuity. It should contradict bijection.
+Maybe mono doesn't mean what we thought?*)
+(*maybe it's not true and we can find a counterexample*)
+
+  thm mem_Collect_eq mono_invE leD lt_ex
 
 locale Lines =
   fixes isLine :: "'p set \<Rightarrow> bool"
