@@ -4,16 +4,61 @@ begin
 
 definition mono_on :: "(real \<Rightarrow> real) \<Rightarrow> real set \<Rightarrow> bool"
   where "mono_on f S = (\<forall>x\<in>S. \<forall>y\<in>S. x \<le> y \<longrightarrow> f x \<le> f y)"
-
+declare[[show_types]]
 thm mono_bij_Inf
-(* but we would like mono_on and bij_on because total functions*)
-lemma  assumes "mono f" "bij_betw f {x. (a::real) < x \<and> x < b} (UNIV::real set)" 
-  shows "continuous (at x within {x. (a::real) < x \<and> x < b}) f"
-proof (rule ccontr)
-  assume "\<not> continuous (at x within {x. a < x \<and> x < b}) f"
-  from assms have "\<exists>y. \<forall> x \<in> {x. (a::real) < x \<and> x < b}. f x \<noteq> y"
-    by (metis (no_types, lifting) leD lt_ex mem_Collect_eq mono_invE)
+thm mono_def
+
+theorem lim_sin_x_over_x: assumes "p=1"
+shows "\<forall>r>0.\<exists>s>0. \<forall>x. x>0\<and>dist x 0<s 
+                            \<longrightarrow> dist ((Sin x)/x) 1<r"
+  thm isCont_def (*isCont (?f::?'a \<Rightarrow> ?'b) (?a::?'a) = ?f \<midarrow>?a\<rightarrow> ?f ?a*)
+  oops
   
+  thm mono_def
+(* but we would like mono_on and bij_on because total functions*)
+(*note cannot use mono and must use mono_on*)
+lemma  assumes mono_f:"mono_on f {x. (a::real) < x \<and> x < b}"
+  and bij_f:"bij_betw f {x. (a::real) < x \<and> x < b} (UNIV::real set)" 
+shows "\<forall>x \<in> {x. (a::real) < x \<and> x < b}. isCont f x"
+proof (subst isCont_def, subst LIM_def, (subst dist_real_def) +, safe)
+  fix r eps assume "a < r"  "r < b" "eps > (0::real)"
+  thm bij_betw_def image_def
+  from bij_f obtain q where q_def:"f r + eps = f q"
+    by (subst (asm) bij_betw_def, subst (asm) image_def, blast)
+  from mono_on bij_f have "mono_on inv f"
+  from q_def have "f q > f r"
+  show "\<exists>del>0. \<forall>x. x \<noteq> r \<and> \<bar>x - r\<bar> < del \<longrightarrow> \<bar>f x - f r\<bar> < eps"
+  proof (rule exI, safe)
+    show "q-r>0" 
+
+
+
+
+
+(*but it may not be continuous at the edge?*)
+(*proof (rule ccontr)
+  assume not_cont_f:"\<not> (\<forall>x \<in> {x. (a::real) < x \<and> x < b}. isCont f x)"
+  from bij_f have "f ` {x. (a::real) < x \<and> x < b} = {y. \<exists>x\<in>{x. (a::real) < x \<and> x < b}. y = f x}"
+    using bij_betw_def image_def by blast
+  from bij_f have "f ` {x. (a::real) < x \<and> x < b} = (UNIV::real set)" 
+    by (subst (asm) bij_betw_def, blast)
+  then have "\<forall>y. \<exists>x\<in>{x. (a::real) < x \<and> x < b}. y = f x" by blast
+  from not_cont_f
+  have "\<not> (\<forall>x \<in> {x. (a::real) < x \<and> x < b}. 
+(\<forall>r>0. \<exists>s>0. \<forall>z. z \<noteq> x \<and> dist z x < s \<longrightarrow> dist (f z) (f x) < r))"
+    by (subst (asm) isCont_def, subst (asm) LIM_def)
+  from  this
+  have "\<exists>x \<in> {x. (a::real) < x \<and> x < b}. " *)
+  
+
+
+qed
+  thm bij_betw_def
+(*bij_betw ?f ?A ?B = (inj_on ?f ?A \<and> ?f ` ?A = ?B)*)
+  thm inj_on_def
+  thm LIM_def
+  thm image_def
+(*?f ` ?A = {y. \<exists>x\<in>?A. y = ?f x}*)
 (*arrgh this shouldn't be provable without discontinuity. It should contradict bijection.
 Maybe mono doesn't mean what we thought?*)
 (*maybe it's not true and we can find a counterexample*)
