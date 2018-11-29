@@ -1,20 +1,81 @@
 theory Brossard_Geometry imports Complex_Main All_True_or_All_False Mod4
 
 begin
-
-definition mono_on :: "(real \<Rightarrow> real) \<Rightarrow> real set \<Rightarrow> bool"
-  where "mono_on f S = (\<forall>x\<in>S. \<forall>y\<in>S. x \<le> y \<longrightarrow> f x \<le> f y)"
-declare[[show_types]]
-thm mono_bij_Inf
 thm mono_def
+definition mono_on :: "(real \<Rightarrow> real) \<Rightarrow> real set \<Rightarrow> bool"
+  where "mono_on f S = (\<forall>x\<in>S. \<forall>y\<in>S. x < y \<longrightarrow> f x < f y)"
 
-theorem lim_sin_x_over_x: assumes "p=1"
-shows "\<forall>r>0.\<exists>s>0. \<forall>x. x>0\<and>dist x 0<s 
-                            \<longrightarrow> dist ((Sin x)/x) 1<r"
-  thm isCont_def (*isCont (?f::?'a \<Rightarrow> ?'b) (?a::?'a) = ?f \<midarrow>?a\<rightarrow> ?f ?a*)
+definition inv_on :: "real set \<Rightarrow> (real \<Rightarrow> real) \<Rightarrow> (real \<Rightarrow> real)"
+  where "inv_on S f = (\<lambda>y. SOME x. x \<in> S \<and> f x = y)"
+
+lemma bij_betw_inv_on: assumes "bij_betw f A B" shows "(inv_on A f) ` B = A"
+proof (subst inv_on_def, subst image_def, rule)
+  have "inj_on f A" and "f ` A = B" using assms
+    by (auto simp add: bij_betw_def)
+  from `image f A = B`
+  have aset: "\<forall>b \<in> B. \<exists>a. a \<in> A \<and> f a = b" using image_def by blast
+  then have some_prop: 
+"\<forall>b \<in> B. (SOME a. a \<in> A \<and> f a = b) \<in> A \<and> f (SOME a. a \<in> A \<and> f a = b) = b"
+    by (subst(asm) some_eq_ex[symmetric])
+  then show "{y. \<exists>x\<in>B. y = (SOME a. a \<in> A \<and> f a = x)} \<subseteq> A" by blast
+  show "A \<subseteq> {y. \<exists>x\<in>B. y = (SOME a. a \<in> A \<and> f a = x)}" 
+  proof (rule, rule, rule_tac x = "f x" in bexI, rule some1_equality[symmetric, rotated]
+, rule conjI, assumption, rule, rule_tac a = "x" in ex1I, rule conjI, assumption, rule)
+    fix y assume "y \<in> A"
+    from this `image f A = B`
+    show "f y \<in> B" using image_def by blast
+    fix x
+    assume "x \<in> A \<and> f x = f y" 
+    then show "x = y" using `inj_on f A` inj_on_def `y \<in> A` by metis
+  qed
+qed
+thm bij_betw_def
+lemma bij_betw_inv_on: assumes "bij_betw f A B" shows "inj_on (inv_on A f) B"
   oops
+  thm inj_on_def inv_on_def image_def
+lemma inv_on_in_set: assumes "(inv_on A f) ` B = A" "y \<in> B"
+  shows "inv_on A f y \<in> A" 
+  using assms(1) assms(2) by blast
+
+lemma assumes "bij_betw f A B" "y \<in> A" shows "f y \<in> B"
+  using assms(1) assms(2) bij_betwE by blast
+
+thm bij_betw_def
+lemma image_inv_on_welldefined: assumes "f ` A = B" "y \<in> B" shows "f (inv_on A f y) = y" "(inv_on A f y) \<in> A"
+proof (subst inv_on_def)
+  from assms(1) have "{y. \<exists>x\<in>A. y = f x} = B" 
+    by (subst (asm) image_def)
+  from this `y \<in> B` have "\<exists>x. x\<in>A \<and> f x = y" by blast
+  then have something:"(SOME x. x\<in>A \<and> f x = y) \<in>A \<and> f (SOME x. x\<in>A \<and> f x = y) = y" by (rule someI_ex)
+  from this show "f (SOME x. x \<in> A \<and> f x = y) = y" by (rule conjunct2)
+  from something show "inv_on A f y \<in> A" by (subst inv_on_def, rule_tac conjunct1)
+qed
+
+lemma bij_betw_inv_on_welldefined:assumes "bij_betw f A B" "y \<in> B" shows "f (inv_on A f y) = y" "(inv_on A f y) \<in> A"
+  using assms(1,2)  bij_betw_def image_inv_on_welldefined 
+  by  metis +
+
+lemma assumes "bij_betw f A B" shows "bij_betw (inv_on A f) B A" oops
+
+
+lemma assumes "mono_on f A" "bij_betw f A B" shows "mono_on (inv_on A f) B"
+proof (subst mono_on_def, safe, rule ccontr)
+  fix x y assume "x \<in> B" "y \<in> B" "x < y" "\<not> inv_on A f x < inv_on A f y"
+  then consider "inv_on A f x = inv_on A f y" | "inv_on A f x > inv_on A f y" by linarith
+  then show False
+  proof (cases)
+    assume "inv_on A f y < inv_on A f x"
+    from `bij_betw f A B` have "(inv_on A f) ` B = A" by (rule bij_betw_inv_on)
+    from this `y \<in> B` `x \<in> B` have "inv_on A f y \<in> A" and "inv_on A f x \<in> A" 
+      by (auto simp add: inv_on_in_set)
+    from this `inv_on A f y < inv_on A f x`
+    have "f (inv_on A f y) < f (inv_on A f x)" 
+      using `mono_on f A` mono_on_def by blast
+    from this inv_on_def bij_betw_inv_on_welldefined have "y<x"
+
+      
   
-  thm mono_def
+  thm mono_on_def
 (* but we would like mono_on and bij_on because total functions*)
 (*note cannot use mono and must use mono_on*)
 lemma  assumes mono_f:"mono_on f {x. (a::real) < x \<and> x < b}"
@@ -25,12 +86,12 @@ proof (subst isCont_def, subst LIM_def, (subst dist_real_def) +, safe)
   thm bij_betw_def image_def
   from bij_f obtain q where q_def:"f r + eps = f q"
     by (subst (asm) bij_betw_def, subst (asm) image_def, blast)
-  from mono_on bij_f have "mono_on inv f"
+  from mono_on bij_f have "mono_on inv_on B f"
   from q_def have "f q > f r"
   show "\<exists>del>0. \<forall>x. x \<noteq> r \<and> \<bar>x - r\<bar> < del \<longrightarrow> \<bar>f x - f r\<bar> < eps"
   proof (rule exI, safe)
     show "q-r>0" 
-
+    
 
 
 
