@@ -1437,11 +1437,10 @@ qed
 
 definition phi::"'p \<Rightarrow> 'p \<Rightarrow> real \<Rightarrow> real" where
  "phi X A d = ameasure (halfline X A) (halfline X (inv (\<lambda>P. distance A P) d))"
-thm between_imp_collinear
-lemma assumes "between A P Q" "distance A P = distance A Q"
+
+lemma same_side_dist_imp_same:assumes "between A P Q" "distance A P = distance A Q"
   shows "P = Q"
 proof -
-  thm between_def
   from line_bestdef have "P \<in> line A P"
     by simp
   from `between A P Q` have "Q \<in> line A P" by (rule between_imp_collinear)
@@ -1451,28 +1450,90 @@ proof -
     by (rule point_on_line_consistent_coordfn)
   from x_def `Q \<in> line A P` have 2:"distance A Q = \<bar>x A - x Q\<bar>"
     by (rule point_on_line_consistent_coordfn)
-  from 1 2 `distance A P = distance A Q` have "\<bar>x A - x P\<bar> = \<bar>x A - x Q\<bar>"
+  from 1 2 `distance A P = distance A Q` have dist:"\<bar>x A - x P\<bar> = \<bar>x A - x Q\<bar>"
     by simp  
   from x_def `between A P Q` `Q \<in> line A P` 
-  have "x A < x P \<and> x P < x Q \<or> x Q < x P \<and> x P < x A"
+  have bet:"x A < x P \<and> x P < x Q \<or> x Q < x P \<and> x P < x A"
     using between_expanded_def by auto
+  from dist bet have "x P = x Q" 
+    by linarith
+  from brossard_line_measure2 `x \<in> Coord (line A P)` line_bestdef bij_betw_def
+  have "inj_on x (line A P)" by blast
+  from `x P = x Q` this `Q \<in> line A P` `P \<in> line A P`
+  show "P = Q" by (subst(asm) inj_on_def, blast)
+qed
 
-lemma assumes "P \<in> halfline A B" "Q \<in> halfline A B" "distance A P = distance A Q"
-  shows "P = Q"
+lemma halfline_imp_collinear: assumes "P \<in> halfline A B" "Q \<in> halfline A B" 
+  shows "collinear A P Q"
+proof (cases "Q\<noteq>A")
+  case True
+  show ?thesis 
+    by (meson Lines.collinear_bestdef2 Lines_axioms `Q\<noteq>A` halfline_bestdef(2)
+ halfline_bestdef(3) halfline_points_on_line line_bestdef(1) `P \<in> halfline A B` `Q \<in> halfline A B`)
+next
+  case False
+  from this show ?thesis
+    using noncollinear_imp_dist by blast
+qed
+
+lemma halfline_swap_point: assumes "P \<in> halfline A B" "P \<noteq> A"
+    shows "halfline A B = {Q. \<not> between P A Q \<and> Q \<in> line A B}"
 proof -
-  from `P \<in> halfline A B` have "P \<in> line A B"
-    using halfline_propersubset by blast
-  from `Q \<in> halfline A B` have "Q \<in> line A B"
-    using halfline_propersubset by blast
-  obtain x where x_def:"x \<in> Coord (line A B)"
-    using distance_expanded_def by blast
-  from this `P \<in> line A B` have 1:"distance A P = \<bar>x A - x P\<bar>"
-    by (rule point_on_line_consistent_coordfn)
-  from x_def `Q \<in> line A B` have 2:"distance A Q = \<bar>x A - x Q\<bar>"
-    by (rule point_on_line_consistent_coordfn)
-  from 1 2 `distance A P = distance A Q` have "\<bar>x A - x P\<bar> = \<bar>x A - x Q\<bar>"
-    by simp
-  then consider "x P = x Q" | "x P = - x Q"
+  from `P \<noteq> A` have AP_def:"halfline A P = {Q. \<not> between P A Q \<and> Q \<in> line A P}"
+    using halfline_def by auto
+  from `P \<in> halfline A B` halfline_propersubset have "P \<in> line A B" by blast
+  from `P \<noteq> A` this have "line A B = line A P" 
+    by (rule_tac line_bestdef_inv, auto simp: line_bestdef)
+  from AP_def have "halfline A P = {Q. \<not> between P A Q \<and> Q \<in> line A B}"
+    by (subst (asm) `line A B = line A P`[symmetric])
+  moreover from `P \<in> halfline A B` `P \<noteq> A` have  "halfline A B = halfline A P"
+    by (rule_tac halfline_independence)
+  ultimately show ?thesis by simp
+qed
+
+lemma same_halfline_same_side: assumes "X \<in> halfline A B" "P \<in> halfline A B" "A\<noteq>X" "P\<noteq>X" "A\<noteq>P"
+  shows "between A P X \<or> between A X P"
+proof -
+  from `X \<in> halfline A B` `P \<in> halfline A B` have "collinear A X P"
+    by (rule halfline_imp_collinear)
+  from `P \<in> halfline A B` `A \<noteq> P`[symmetric] have
+  "halfline A B = {Q. \<not> between P A Q \<and> Q \<in> line A B}"
+    by (rule halfline_swap_point)
+    thm brossards_halfline_def halfline_independence halfline_propersubset line_bestdef(1) 
+line_bestdef(2) line_bestdef_inv 
+  from this assms(1) have "\<not> between P A X"  by auto
+  show "between A P X \<or> between A X P"
+  proof (rule ccontr)
+    assume "\<not> (between A P X \<or> between A X P)"
+    from this `collinear A X P` `A\<noteq>X` `A\<noteq>P` `P\<noteq>X` 
+    have "between P A X" 
+      using collinear_choice_of_between by blast
+    from this `\<not> between P A X` show False by contradiction
+  qed
+qed
+
+
+lemma same_halfline_dist_imp_same:assumes "P \<in> halfline A B"
+ "Q \<in> halfline A B" "P\<noteq>A"  "Q\<noteq>A" "distance A P = distance A Q"
+  shows "P = Q" 
+proof (rule ccontr)
+  assume "P \<noteq> Q"
+  from this `P \<in> halfline A B` `Q \<in> halfline A B` `P\<noteq>A`  `Q\<noteq>A`
+  consider "between A P Q" | "between A Q P" using same_halfline_same_side by auto
+  then show "False"
+  proof (cases)
+    assume "between A P Q" 
+    from this `distance A P = distance A Q` 
+    have "P = Q" by (rule same_side_dist_imp_same)
+    from this `P \<noteq> Q` show ?thesis by contradiction
+  next
+    assume "between A Q P" 
+    from this `distance A P = distance A Q`[symmetric]
+    have "Q=P" by (rule_tac same_side_dist_imp_same)
+    from this `P \<noteq> Q` show ?thesis by simp
+  qed
+qed
+
 
 lemma "bij_betw (\<lambda>P. distance A P) {P. P \<in> halfline A B \<and> P\<noteq>A} {x. 0<x}" thm distance_rel_def
 proof (subst bij_betw_def, rule conjI)
@@ -1480,7 +1541,10 @@ proof (subst bij_betw_def, rule conjI)
   proof (subst inj_on_def, safe)
     fix x y assume "x \<in> halfline A B" "y \<in> halfline A B" 
     "x \<noteq> A" "y \<noteq> A" "distance A x = distance A y" 
-    
+    then show "x = y" by (rule_tac same_halfline_dist_imp_same)
+  qed
+
+
     thm distance_def
 lemma "bij_betw (\<lambda>d. phi X A d) {x. 0 < x} {x. 0\<le>x \<and> x<4}" 
 proof (subst bij_betw_def, rule conjI)
