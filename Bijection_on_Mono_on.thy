@@ -467,5 +467,35 @@ proof (subst isCont_def, subst LIM_def, (subst dist_real_def) +, safe)
   qed
 qed
 
-
+lemma bij_betw_shift:assumes bijz:"bij_betw x A (UNIV::real set)" and zy:"(\<lambda>z. y z) = (\<lambda>z. x z + a)" 
+  shows "bij_betw y A (UNIV::real set)" 
+proof (subst bij_betw_def, rule conjI)
+  show "inj_on y A"
+  proof (subst inj_on_def, safe)
+    fix z1 z2
+    assume "z1 \<in> A" "z2 \<in> A" "y z1 = y z2"
+    then have "x z1 = x z2" using zy by auto
+    from this bijz `z1 \<in> A` `z2 \<in> A`show "z1 = z2"
+      by (subst (asm) bij_betw_def, subst (asm) inj_on_def, auto)
+  qed
+  show "y ` A = UNIV"
+  proof (subst image_def, safe)
+    fix z assume "z \<in> A"
+    have "y z = x z + a" using zy by auto
+    from this bijz `z \<in> A`show "y z \<in> UNIV"
+      by (subst (asm) bij_betw_def, subst (asm) image_def, auto)
+  next
+    fix r assume "r \<in> (UNIV::real set)"
+    have "\<exists>z \<in> A. x z = (r - a)" 
+    proof -
+      have "{y. \<exists>z\<in>A. y = x z} = UNIV"  using bijz bij_betw_imp_surj_on image_def
+        by fast
+      moreover have "(r - a) \<in> UNIV" using iso_tuple_UNIV_I by blast
+      ultimately have "(r - a) \<in>{y. \<exists>z\<in>A. y = x z}" by blast
+      then show ?thesis by auto
+    qed
+    then show "\<exists>z\<in>A. r = y z" using zy 
+      by force
+  qed
+qed
 end
