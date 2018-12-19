@@ -1,4 +1,5 @@
-theory Lines_Brossard_Geometry imports Complex_Main All_True_or_All_False Mod4
+theory Lines_Brossard_Geometry imports Complex_Main All_True_or_All_False Mod4 
+Bijection_on_Mono_on
 begin
 
 locale Lines =
@@ -1037,19 +1038,24 @@ qed
 
 lemma ex_pt_for_pos_real: assumes "h \<in> HalfLine" "x \<in> Coord l" "r>0"
   shows "\<exists> P \<in> h. \<bar>x P\<bar> = r"
-  sorry
-
-lemma assumes "bij_betw x A B" "(\<lambda>z. y z) = (\<lambda>z. x z + a)" shows "bij_betw y A B" 
-  
+  oops
 
 lemma ex_coord_for_pt_real:shows "\<exists>x \<in> Coord (line A B). x A = r"
 proof - 
   obtain x where "x \<in> Coord (line A B)" using distance_expanded_def by blast
-  define y where "(\<lambda>P. y P) = (\<lambda>P. x P + (r - x A))"
-  then have "\<forall>P\<in>(line A B). \<forall>Q\<in>(line A B). \<bar>x P - x Q\<bar> = \<bar>y P - y Q\<bar>"
+  define y where y_def:"(\<lambda>P. y P) = (\<lambda>P. x P + (r - x A))"
+  then have equiv:"\<forall>P\<in>(line A B). \<forall>Q\<in>(line A B). \<bar>x P - x Q\<bar> = \<bar>y P - y Q\<bar>"
     by auto
-  have "bij_betw y (line A B) UNIV"
-  thm brossard_line_measure3
+  from line_bestdef `x \<in> Coord (line A B)`
+  have "bij_betw x (line A B) UNIV" by (rule_tac brossard_line_measure2)
+  from y_def this have "bij_betw y (line A B) UNIV" by (rule_tac bij_betw_shift)
+  from this `bij_betw x (line A B) UNIV` `x \<in> Coord (line A B)` brossard_line_measure3
+  line_bestdef equiv
+  have "y \<in> Coord (line A B)" by auto
+  moreover from y_def have "y A = r" by auto
+  ultimately show ?thesis by blast
+qed
+
 
 lemma assumes "between X P A \<or> between X A P" "P \<in> line X A"
         shows "P \<in> halfline X A"
@@ -1788,7 +1794,7 @@ collinear_def line_bestdef(1) point_not_on_line)
     fix r assume "(r::real) > 0"
     obtain x where x_def:"x \<in> Coord (line A B)"
       using distance_expanded_def by blast    
-    thm ex_pt_for_real ex_pt_for_pos_real
+    thm ex_pt_for_real ex_pt_for_pos_real ex_coord_for_pt_real
     from `r>0` `x \<in> Coord (line A B)`have "\<exists>P\<in>halfline A B. \<bar>x P\<bar> = r"
       using ex_pt_for_pos_real 
     
